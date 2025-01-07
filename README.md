@@ -13,7 +13,7 @@ This is a FastAPI-based project designed for testing purposes. Follow the steps 
      ```
 
 2. **Create .env File**
-   - Create a `.env` file from `env.example` and update the configuration:
+   - Create a `.env` file from `.env.example` and update the configuration:
      ```bash
      cp env.example .env
      ```
