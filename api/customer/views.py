@@ -1,5 +1,5 @@
 from .models import Customer
-from db import db
+from core.db import db
 from main import app
 from .schemas import CustomerModel
 
