@@ -127,3 +127,4 @@ def delete_shop(
         raise HTTPException(404, "Shop not found")
     db.delete(shop)
     db.commit()
+    return None

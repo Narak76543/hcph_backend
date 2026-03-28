@@ -17,7 +17,7 @@ from api.users.models import User
 from api.users.schemas import (
     UserResponse, TokenResponse
 )
-
+from pydantic import BaseModel
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROFILE_IMAGE_DIR = PROJECT_ROOT / "media" / "profile_images"
@@ -144,15 +144,15 @@ def get_me(current_user=Depends(get_current_user)):
 # - for User update profile
 @app.patch("/users/me", response_model=UserResponse, tags=["Users"])
 def update_me(
-    request         : Request,
-    firstname       : str | None        = Form(None),
-    lastname        : str | None        = Form(None),
-    firstname_lc    : str | None        = Form(None),
-    lastname_lc     : str | None        = Form(None),
-    username        : str | None        = Form(None),
-    phone_number    : str | None        = Form(None),
-    profile_image_url: str | None       = Form(None),
-    profile_image   : UploadFile | None = File(None),
+    request          : Request,
+    firstname        : str | None        = Form(None),
+    lastname         : str | None        = Form(None),
+    firstname_lc     : str | None        = Form(None),
+    lastname_lc      : str | None        = Form(None),
+    username         : str | None        = Form(None),
+    phone_number     : str | None        = Form(None),
+    profile_image_url: str | None        = Form(None),
+    profile_image    : UploadFile | None = File(None),
     db              : Session           = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
@@ -225,3 +225,35 @@ def delete(
     _delete_profile_image_file(user.profile_image_url)
     db.delete(user)
     db.commit()
+
+class GoogleLoginRequest(BaseModel):
+    email       : EmailStr
+    firebase_uid: str
+    firstname   : str
+    lastname    : str
+
+@app.post("/users/google", response_model=TokenResponse, tags=["Users"])
+def google_login(data: GoogleLoginRequest, db: Session = Depends(get_db)):
+    # 1. Check if user already exists (maybe they registered manually before)
+    user = db.query(User).filter(User.email == data.email).first()
+    
+    # 2. If they don't exist, create an account for them automatically!
+    if not user:
+        user = User(
+            firstname         = data.firstname,
+            firstname_lc      = data.firstname.lower(),
+            lastname          = data.lastname,
+            lastname_lc       = data.lastname.lower(),
+            username          = data.email.split("@")[0].lower() + "_" + data.firebase_uid[:5].lower(),
+            email             = data.email,
+            phone_number      = data.firebase_uid[-10:],                                                  # Dummy phone number
+            password_hash     = hash_password(data.firebase_uid),                                         # Dummy password hash
+            profile_image_url = None,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        
+    # 3. Safely log them in and give them a real access token!
+    token = create_access_token({"sub": str(user.id), "role": user.role})
+    return {"access_token": token, "token_type": "bearer", "user": user}
