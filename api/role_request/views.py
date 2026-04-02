@@ -66,6 +66,23 @@ def get_all_requests(
         query = query.filter(RoleRequest.status == status.upper())
     return query.order_by(RoleRequest.create_at.desc()).offset(skip).limit(limit).all()
 
+@app.get("/requests/summary", tags=["Role Requests"])
+def get_requests_summary(
+    db: Session = Depends(get_db),
+    _=Depends(require_admin),
+):
+    """Quick count of all request statuses — useful for admin dashboard."""
+    pending  = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.pending).count()
+    approved = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.approved).count()
+    rejected = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.rejected).count()
+ 
+    return {
+        "pending" : pending,
+        "approved": approved,
+        "rejected": rejected,
+        "total"   : pending + approved + rejected,
+    }
+
 @app.get("/requests/{request_id}", response_model=RoleRequestResponse, tags=["Role Requests"])
 def get_one_request(
     request_id: UUID,
@@ -119,20 +136,3 @@ def reject_request(
     db.commit()
     db.refresh(req)
     return req
-
-@app.get("/requests/summary", tags=["Admin Reviews"])
-def get_requests_summary(
-    db: Session = Depends(get_db),
-    _=Depends(require_admin),
-):
-    """Quick count of all request statuses — useful for admin dashboard."""
-    pending  = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.pending).count()
-    approved = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.approved).count()
-    rejected = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.rejected).count()
- 
-    return {
-        "pending" : pending,
-        "approved": approved,
-        "rejected": rejected,
-        "total"   : pending + approved + rejected,
-    }
