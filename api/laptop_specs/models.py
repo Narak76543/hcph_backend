@@ -1,5 +1,6 @@
 import uuid
 from sqlalchemy import Column, String, Integer, Boolean, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from core.db import Base
 
@@ -19,3 +20,5 @@ class LaptopSpec(Base):
     has_hdd_bay        = Column(Boolean,     default=False)
     display_size       = Column(String(20),  nullable=True)   # e.g. 15.6"
     display_resolution = Column(String(50),  nullable=True)   # e.g. 1920x1080
+
+    laptop_model = relationship("LaptopModel", back_populates="spec")

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from uuid import UUID
 
 from core.db import get_db
-from core.security import require_admin
+from core.security import get_current_user, require_technical
 from api.laptop_specs.models import LaptopSpec
 from api.laptop_specs.schemas import LaptopSpecCreate, LaptopSpecUpdate, LaptopSpecResponse
 from api.laptop_models.models import LaptopModel
@@ -17,7 +17,7 @@ def register_laptop_spec_routes(app):
     def create_spec(
         payload: LaptopSpecCreate,
         db     : Session = Depends(get_db),
-        _=Depends(require_admin),
+        current_user=Depends(get_current_user),
     ):
         # validate model exists
         if not db.query(LaptopModel).filter(LaptopModel.id == payload.model_id).first():
@@ -27,7 +27,7 @@ def register_laptop_spec_routes(app):
         if db.query(LaptopSpec).filter(LaptopSpec.model_id == payload.model_id).first():
             raise HTTPException(400, "Spec already exists for this laptop model")
 
-        spec = LaptopSpec(**payload.model_dump())
+        spec = LaptopSpec(**payload.dict())
         db.add(spec)
         db.commit()
         db.refresh(spec)
@@ -78,12 +78,12 @@ def register_laptop_spec_routes(app):
         spec_id: UUID,
         payload: LaptopSpecUpdate,
         db     : Session = Depends(get_db),
-        _=Depends(require_admin),
+        _=Depends(require_technical),
     ):
         spec = db.query(LaptopSpec).filter(LaptopSpec.id == spec_id).first()
         if not spec:
             raise HTTPException(404, "Spec not found")
-        for field, value in payload.model_dump(exclude_none=True).items():
+        for field, value in payload.dict(exclude_none=True).items():
             setattr(spec, field, value)
         db.commit()
         db.refresh(spec)
@@ -96,7 +96,7 @@ def register_laptop_spec_routes(app):
     def delete_spec(
         spec_id: UUID,
         db     : Session = Depends(get_db),
-        _=Depends(require_admin),
+        _=Depends(require_technical),
     ):
         spec = db.query(LaptopSpec).filter(LaptopSpec.id == spec_id).first()
         if not spec:

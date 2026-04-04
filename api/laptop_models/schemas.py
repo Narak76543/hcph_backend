@@ -1,7 +1,15 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Any
 from uuid import UUID
 from api.laptop_brands.schemas import LaptopBrandResponse
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from api.laptop_specs.schemas import LaptopSpecResponse
+else:
+    # Use any to avoid circular imports at runtime if needed, 
+    # but Pydantic handles strings.
+    LaptopSpecResponse = Any
+
 
 
 class LaptopModelCreate(BaseModel):
@@ -34,6 +42,7 @@ class LaptopModelResponse(BaseModel):
     gpu         : Optional[str]
     form_factor : Optional[str]
     brand       : Optional[LaptopBrandResponse] = None
+    spec        : Optional[Any] = None
 
     class Config:
         orm_mode = True

@@ -16,3 +16,7 @@ class LaptopModel(Base):
     cpu          = Column(String(100), nullable=True)
     gpu          = Column(String(100), nullable=True)
     form_factor  = Column(String(50),  nullable=True)
+    created_by   = Column(UUID(as_uuid=True), ForeignKey("TBL_USERS.id"), nullable=True)
+
+    user = relationship("User", backref="created_models")
+    spec = relationship("LaptopSpec", uselist=False, back_populates="laptop_model")

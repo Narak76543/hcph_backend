@@ -50,7 +50,9 @@ def register_user_laptop_routes(app):
         db          : Session = Depends(get_db),
         current_user=Depends(get_current_user),
     ):
-        return db.query(UserLaptop).options(joinedload(UserLaptop.laptop_model)).filter(UserLaptop.user_id == current_user.id).all()
+        return db.query(UserLaptop).options(
+            joinedload(UserLaptop.laptop_model).joinedload(LaptopModel.spec)
+        ).filter(UserLaptop.user_id == current_user.id).all()
 
 
     # ── GET ONE OF MY LAPTOPS ──────────────────────────────────────────────

@@ -15,6 +15,9 @@ try:
         print("Adding column to TBL_PART_CATEGORIES...")
         conn.execute(text('ALTER TABLE "TBL_PART_CATEGORIES" ADD COLUMN IF NOT EXISTS part_category_img_url TEXT;'))
         
+        print("Adding created_by to TBL_LAPTOP_MODELS...")
+        conn.execute(text('ALTER TABLE "TBL_LAPTOP_MODELS" ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES "TBL_USERS" (id);'))
+
         conn.commit()
     print("Columns added successfully!")
 except Exception as e:
