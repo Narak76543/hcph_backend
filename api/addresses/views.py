@@ -1,18 +1,15 @@
 from fastapi import Depends, HTTPException
 from sqlalchemy.orm import Session
 from uuid import UUID
-
 from api.addresses.models import ShopAddress
 from api.addresses.schemas import ShopAddressCreate, ShopAddressResponse, ShopAddressUpdate
 from core.db import get_db
 from core.security import require_admin, require_technical, get_current_user
-
 from api.shops.models import Shop
-
 
 def register_shop_address_routes(app):
 
-    # ── ADD ADDRESS TO SHOP (technical — own shop only) ────────────────────
+    # ADD ADDRESS TO SHOP (technical — own shop only) 
 
     @app.post("/shops/{shop_id}/addresses/", response_model=ShopAddressResponse, status_code=201, tags=["Shop Addresses"])
     def add_address(
@@ -50,8 +47,7 @@ def register_shop_address_routes(app):
         db.refresh(address)
         return address
 
-
-    # ── GET ALL ADDRESSES FOR A SHOP (public) ──────────────────────────────
+    # GET ALL ADDRESSES FOR A SHOP (public)
 
     @app.get("/shops/{shop_id}/addresses/", response_model=list[ShopAddressResponse], tags=["Shop Addresses"])
     def get_shop_addresses(
@@ -128,8 +124,7 @@ def register_shop_address_routes(app):
         db.refresh(address)
         return address
 
-
-    # ── SET AS MAIN ADDRESS ────────────────────────────────────────────────
+    # ── SET AS MAIN ADDRESS 
 
     @app.patch("/shops/{shop_id}/addresses/{address_id}/set-main", response_model=ShopAddressResponse, tags=["Shop Addresses"])
     def set_main_address(

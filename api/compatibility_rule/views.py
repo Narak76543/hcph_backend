@@ -8,7 +8,7 @@ from core.security import get_current_user, require_technical, require_admin
 
 def register_compatibility_routes(app):
 
-    # ── CREATE (technical + admin) 
+    # CREATE (technical + admin) 
     @app.post("/compatibility/", response_model=CompatibilityRuleResponse, status_code=201, tags=["Compatibility"])
     def create_rule(
         payload     : CompatibilityRuleCreate,
@@ -36,7 +36,7 @@ def register_compatibility_routes(app):
         return rule
 
 
-    # ── GET ALL (public) — filter by laptop or part 
+    # GET ALL (public) — filter by laptop or part 
     @app.get("/compatibility/", response_model=list[CompatibilityRuleResponse], tags=["Compatibility"])
     def get_all_rules(
         laptop_model_id: UUID | None = None,
@@ -56,7 +56,7 @@ def register_compatibility_routes(app):
         return query.offset(skip).limit(limit).all()
 
 
-    # ── GET ONE (public) 
+    # GET ONE (public) 
     @app.get("/compatibility/{rule_id}", response_model=CompatibilityRuleResponse, tags=["Compatibility"])
     def get_one_rule(
         rule_id: UUID,
@@ -67,7 +67,7 @@ def register_compatibility_routes(app):
             raise HTTPException(404, "Compatibility rule not found")
         return rule
     
-    # ── CHECK COMPATIBILITY (key feature) — is this part ok for this laptop?
+    # CHECK COMPATIBILITY (key feature) — is this part ok for this laptop?
     @app.get("/compatibility/check/", response_model=CompatibilityRuleResponse, tags=["Compatibility"])
     def check_compatibility(
         laptop_model_id: UUID,
@@ -83,7 +83,7 @@ def register_compatibility_routes(app):
         return rule
 
 
-    # ── UPDATE (technical + admin) 
+    # UPDATE (technical + admin) 
     @app.patch("/compatibility/{rule_id}", response_model=CompatibilityRuleResponse, tags=["Compatibility"])
     def update_rule(
         rule_id     : UUID,
@@ -104,7 +104,7 @@ def register_compatibility_routes(app):
         return rule
 
 
-    # ── DELETE (admin only) 
+    # DELETE (admin only) 
     @app.delete("/compatibility/{rule_id}", status_code=204, tags=["Compatibility"])
     def delete_rule(
         rule_id: UUID,

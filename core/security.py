@@ -33,8 +33,7 @@ def decode_token(token: str) -> dict:
     except JWTError:
         raise HTTPException(401, "Invalid or expired token")
 
-
-# ── DEPENDENCIES 
+# DEPENDENCIES 
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db:    Session = Depends(get_db)
