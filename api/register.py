@@ -33,3 +33,7 @@ def register_routes() -> None:
     from api.part_specs.views import register_part_spec_routes
     register_part_spec_routes(app)
     
+    # Sub brand api
+    from api.laptop_sub_brands.views import register_laptop_sub_brand_routes
+    register_laptop_sub_brand_routes(app)
+    
