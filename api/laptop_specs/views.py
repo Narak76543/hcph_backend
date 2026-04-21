@@ -17,7 +17,7 @@ def register_laptop_spec_routes(app):
     def create_spec(
         payload: LaptopSpecCreate,
         db     : Session = Depends(get_db),
-        current_user=Depends(get_current_user),
+        current_user=Depends(require_technical),
     ):
         # validate model exists
         if not db.query(LaptopModel).filter(LaptopModel.id == payload.model_id).first():

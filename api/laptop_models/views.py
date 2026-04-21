@@ -12,7 +12,7 @@ from api.laptop_brands.models import LaptopBrand
 def register_laptop_model_routes(app):
 
     @app.post("/laptop-models/", response_model=LaptopModelResponse, status_code=201, tags=["Laptop Models"])
-    def create_model(payload: LaptopModelCreate, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    def create_model(payload: LaptopModelCreate, db: Session = Depends(get_db), current_user=Depends(require_technical)):
         if not db.query(LaptopBrand).filter(LaptopBrand.id == payload.brand_id).first():
             raise HTTPException(404, "Brand not found")
         if db.query(LaptopModel).filter(LaptopModel.slug == payload.slug).first():
@@ -39,11 +39,9 @@ def register_laptop_model_routes(app):
     ):
         query = db.query(LaptopModel)
         
-        # Ownership filtering: show official models (created_by IS NULL) 
-        # or models created by the current user. Admins see all.
-        if current_user.role != "ADMIN":
-            from sqlalchemy import or_
-            query = query.filter(or_(LaptopModel.created_by == None, LaptopModel.created_by == current_user.id))
+        # All laptop models are visible to every user.
+        # Models created by Technical/Admin users are shared resources.
+        # The `created_by` column is kept for audit purposes only.
 
         if brand_id:
             query = query.filter(LaptopModel.brand_id == brand_id)
