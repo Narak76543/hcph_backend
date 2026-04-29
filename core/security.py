@@ -8,8 +8,6 @@ from sqlalchemy.orm import Session
 from core.db import get_db
 from config import settings
 
-# Use bcrypt_sha256 to avoid bcrypt's 72-byte password limit while keeping
-# backward compatibility with existing bcrypt hashes.
 pwd_context   = CryptContext(schemes=["bcrypt_sha256", "bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
 
