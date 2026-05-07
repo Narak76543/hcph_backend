@@ -27,6 +27,7 @@ from core.security import get_current_user, require_technical, require_admin
 from api.shops.models import Shop
 from api.shops.schemas import ShopResponse
 from api.part.schemas import PartResponse
+from api.users.models import User
 
 
 def _listing_with_details(db: Session, listing: ShopListing):
@@ -363,8 +364,64 @@ def register_shop_listing_routes(app):
         if not shop or listing.shop_id != shop.id:
             raise HTTPException(403, "You can only delete your own listings")
 
+
         db.delete(listing)
         db.commit()
+
+
+    # ── ADMIN: GET ALL LISTINGS (admin only) ─────────────────────────────
+
+    @app.get("/admin/listings/", response_model=list[ShopListingCard], tags=["Admin"])
+    def admin_get_all_listings(
+        skip : int     = 0,
+        limit: int     = 50,
+        db   : Session = Depends(get_db),
+        _    : User    = Depends(require_admin),
+    ):
+        """Allows admin to see all listings in the system."""
+        listings = db.query(ShopListing).offset(skip).limit(limit).all()
+        return [_listing_card(db, l) for l in listings]
+
+
+    # ── ADMIN: DELETE ANY LISTING (admin only) ───────────────────────────
+
+    @app.delete("/admin/listings/{listing_id}", status_code=204, tags=["Admin"])
+    def admin_delete_listing(
+        listing_id: UUID,
+        db        : Session = Depends(get_db),
+        _         : User    = Depends(require_admin),
+    ):
+        """Allows admin to remove any user's post/listing."""
+        listing = db.query(ShopListing).filter(ShopListing.id == listing_id).first()
+        if not listing:
+            raise HTTPException(404, "Listing not found")
+        
+        db.delete(listing)
+        db.commit()
+        return None
+
+    # ── ADMIN: LISTINGS SUMMARY (admin only) ────────────────────────────
+
+    @app.get("/admin/listings/summary", tags=["Admin"])
+    def admin_get_listings_summary(
+        db: Session = Depends(get_db),
+        _ : User    = Depends(require_admin),
+    ):
+        """Returns a summary of listings for the admin dashboard."""
+        total_listings = db.query(ShopListing).count()
+        # Count by condition
+        new_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.new).count()
+        used_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.used).count()
+        refurb_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.refurbished).count()
+        
+        return {
+            "total_listings": total_listings,
+            "by_condition": {
+                "NEW": new_count,
+                "USED": used_count,
+                "REFURBISHED": refurb_count
+            }
+        }
 
     # ── UPDATE LISTING (technical own shop + admin) ────────────────────────
 

@@ -222,6 +222,36 @@ def delete(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
+    
+    # ── CLEANUP RELATED RECORDS ───────────────────────────────────────────
+    # We must delete child records first to avoid ForeignKey constraints
+    
+    # 1. Shops and their children (Listings, Addresses)
+    from api.shops.models import Shop
+    from api.shop_listing.models import ShopListing
+    from api.addresses.models import ShopAddress
+
+    shop_ids = [s[0] for s in db.query(Shop.id).filter(Shop.owner_id == user_id).all()]
+    if shop_ids:
+        db.query(ShopListing).filter(ShopListing.shop_id.in_(shop_ids)).delete(synchronize_session=False)
+        db.query(ShopAddress).filter(ShopAddress.shop_id.in_(shop_ids)).delete(synchronize_session=False)
+        db.query(Shop).filter(Shop.owner_id == user_id).delete(synchronize_session=False)
+
+    # 2. Role Requests
+    from api.role_request.models import RoleRequest
+    db.query(RoleRequest).filter(RoleRequest.user_id == user_id).delete(synchronize_session=False)
+
+    # 3. User Laptops
+    from api.user_laptops.models import UserLaptop
+    db.query(UserLaptop).filter(UserLaptop.user_id == user_id).delete(synchronize_session=False)
+
+    # 4. Audit/Creator fields in other tables (Set to NULL instead of delete)
+    from api.laptop_models.models import LaptopModel
+    from api.compatibility_rule.models import CompatibilityRule
+    db.query(LaptopModel).filter(LaptopModel.created_by == user_id).update({LaptopModel.created_by: None}, synchronize_session=False)
+    db.query(CompatibilityRule).filter(CompatibilityRule.verify_by == user_id).update({CompatibilityRule.verify_by: None}, synchronize_session=False)
+
+    # 5. Delete profile image and the user
     _delete_profile_image_file(user.profile_image_url)
     db.delete(user)
     db.commit()
