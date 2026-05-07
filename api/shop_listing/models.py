@@ -8,9 +8,23 @@ from core.db import Base
 
 
 class PartCondition(str, enum.Enum):
-    new          = "NEW"
-    used         = "USED"
-    refurbished  = "REFURBISHED"
+    NEW          = "NEW"
+    USED         = "USED"
+    REFURBISHED  = "REFURBISHED"
+    # Handling lowercase data from database
+    new          = "new"
+    used         = "used"
+    refurbished  = "refurbished"
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.value.upper() == other.upper()
+        if isinstance(other, PartCondition):
+            return self.value.upper() == other.value.upper()
+        return False
+
+    def __hash__(self):
+        return hash(self.value.upper())
 
 
 class ShopListing(Base):
@@ -21,7 +35,7 @@ class ShopListing(Base):
     part_id        = Column(UUID(as_uuid=True), ForeignKey("TBL_PART.id"),  nullable=False)
     price          = Column(Numeric(10, 2),     nullable=False)
     stock_quantity = Column(Integer,            nullable=False, default=0)
-    condition      = Column(Enum(PartCondition), default=PartCondition.new, nullable=False)
+    condition      = Column(Enum(PartCondition), default=PartCondition.NEW, nullable=False)
     update_at      = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     shop = relationship("Shop", backref="listings")

@@ -8,9 +8,23 @@ from core.db import Base
 
 
 class ShopStatus(str, enum.Enum):
-    pending  = "PENDING"
-    active   = "ACTIVE"
-    inactive = "INACTIVE"
+    PENDING  = "PENDING"
+    ACTIVE   = "ACTIVE"
+    INACTIVE = "INACTIVE"
+    # Handling lowercase data from database
+    pending  = "pending"
+    active   = "active"
+    inactive = "inactive"
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.value.upper() == other.upper()
+        if isinstance(other, ShopStatus):
+            return self.value.upper() == other.value.upper()
+        return False
+
+    def __hash__(self):
+        return hash(self.value.upper())
 
 
 class Shop(Base):
@@ -31,7 +45,7 @@ class Shop(Base):
     # Summary/Legacy Address
     address          = Column(String(255), nullable=True)
     
-    status           = Column(Enum(ShopStatus), default=ShopStatus.pending, nullable=False)
+    status           = Column(Enum(ShopStatus), default=ShopStatus.PENDING, nullable=False)
     create_at        = Column(DateTime(timezone=True), server_default=func.now())
     shop_pro_img_url = Column(Text, nullable=True)
 

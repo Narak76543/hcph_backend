@@ -48,12 +48,12 @@ def get_current_user(
 
 
 def require_admin(current_user=Depends(get_current_user)):
-    if current_user.role != "ADMIN":
+    if current_user.role.upper() != "ADMIN":
         raise HTTPException(403, "Admin access required")
     return current_user
 
 
 def require_technical(current_user=Depends(get_current_user)):
-    if current_user.role not in ("TECHNICAL", "ADMIN"):
+    if current_user.role.upper() not in ("TECHNICAL", "ADMIN"):
         raise HTTPException(403, "Technical access required")
     return current_user

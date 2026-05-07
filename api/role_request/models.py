@@ -8,9 +8,23 @@ from core.db import Base
 
 
 class RequestStatus(str, enum.Enum):
-    pending  = "PENDING"
-    approved = "APPROVED"
-    rejected = "REJECTED"
+    PENDING  = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    # Handling lowercase data from database
+    pending  = "pending"
+    approved = "approved"
+    rejected = "rejected"
+
+    def __eq__(self, other):
+        if isinstance(other, str):
+            return self.value.upper() == other.upper()
+        if isinstance(other, RequestStatus):
+            return self.value.upper() == other.value.upper()
+        return False
+
+    def __hash__(self):
+        return hash(self.value.upper())
 
 
 class RoleRequest(Base):
@@ -22,7 +36,7 @@ class RoleRequest(Base):
     shop_address = Column(String(255), nullable=False)
     phone        = Column(String(20),  nullable=False)
     reason       = Column(Text,        nullable=True)
-    status       = Column(Enum(RequestStatus), default=RequestStatus.pending, nullable=False)
+    status       = Column(Enum(RequestStatus), default=RequestStatus.PENDING, nullable=False)
     admin_note   = Column(Text,        nullable=True)   # admin can leave a note on reject
     create_at    = Column(DateTime(timezone=True), server_default=func.now())
 

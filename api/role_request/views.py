@@ -19,12 +19,12 @@ def submit_request(
     db     : Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    if current_user.role in (UserRole.technical, UserRole.admin):
+    if current_user.role.upper() in ("TECHNICAL", "ADMIN"):
         raise HTTPException(400, "You are already a Technical or Admin user")
 
     existing = db.query(RoleRequest).filter(
         RoleRequest.user_id == current_user.id,
-        RoleRequest.status == RequestStatus.pending,
+        RoleRequest.status == RequestStatus.PENDING,
     ).first()
     if existing:
         raise HTTPException(400, "You already have a pending request")
@@ -72,9 +72,9 @@ def get_requests_summary(
     _=Depends(require_admin),
 ):
     """Quick count of all request statuses — useful for admin dashboard."""
-    pending  = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.pending).count()
-    approved = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.approved).count()
-    rejected = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.rejected).count()
+    pending  = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.PENDING).count()
+    approved = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.APPROVED).count()
+    rejected = db.query(RoleRequest).filter(RoleRequest.status == RequestStatus.REJECTED).count()
  
     return {
         "pending" : pending,
@@ -103,14 +103,14 @@ def approve_request(
     req = db.query(RoleRequest).filter(RoleRequest.id == request_id).first()
     if not req:
         raise HTTPException(404, "Request not found")
-    if req.status != RequestStatus.pending:
+    if req.status != RequestStatus.PENDING:
         raise HTTPException(400, f"Request is already {req.status}")
 
-    req.status = RequestStatus.approved
+    req.status = RequestStatus.APPROVED
 
     user = db.query(User).filter(User.id == req.user_id).first()
     if user:
-        user.role = UserRole.technical
+        user.role = UserRole.TECHNICAL
 
     db.commit()
     db.refresh(req)
@@ -127,10 +127,10 @@ def reject_request(
     if not req:
         raise HTTPException(404, "Request not found")
     
-    if req.status != RequestStatus.pending:
+    if req.status != RequestStatus.PENDING:
         raise HTTPException(400, f"Request is already {req.status}")
 
-    req.status = RequestStatus.rejected
+    req.status = RequestStatus.REJECTED
     req.admin_note = payload.admin_note
 
     db.commit()
