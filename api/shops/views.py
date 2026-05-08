@@ -4,8 +4,10 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import Depends, Form, File, HTTPException, Request, UploadFile
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from api.shop_listing.models import ShopListing
 from api.shops.models import Shop, ShopStatus
 from api.shops.schemas import ShopResponse, ShopCreate, ShopUpdate
 from core.app import app
@@ -78,9 +80,22 @@ def create_shop(
     db.refresh(shop)
     return shop
 
+# @app.get("/shops/", response_model=list[ShopResponse], tags=["Shops"])
+# def get_all_shops(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+#     return db.query(Shop).offset(skip).limit(limit).all()
+
 @app.get("/shops/", response_model=list[ShopResponse], tags=["Shops"])
-def get_all_shops(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
-    return db.query(Shop).offset(skip).limit(limit).all()
+def get_all_shops(
+    skip  : int          = 0,
+    limit : int          = 20,
+    status: str | None   = None,   # filter by status e.g. ?status=ACTIVE
+    db    : Session      = Depends(get_db),
+):
+    query = db.query(Shop)
+    if status:
+        query = query.filter(Shop.status == status.upper())
+    shops = query.offset(skip).limit(limit).all()
+    return shops
 
 @app.get("/shops/my-shop", response_model=ShopResponse, tags=["Shops"])
 def get_my_shop(
@@ -185,3 +200,43 @@ def delete_shop(
     db.delete(shop)
     db.commit()
     return None
+
+# get verified shop 
+@app.get("/shops/verified/", tags=["Shops"])
+def get_verified_shops(
+    skip : int     = 0,
+    limit: int     = 10,
+    db   : Session = Depends(get_db),
+):
+    shops = (
+        db.query(Shop)
+        .filter(Shop.status == ShopStatus.ACTIVE)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
+ 
+    result = []
+    for shop in shops:
+        # count listings for this shop
+        listing_count = (
+            db.query(func.count(ShopListing.id))
+            .filter(ShopListing.shop_id == shop.id)
+            .scalar()
+        ) or 0
+ 
+        result.append({
+            "id"              : str(shop.id),
+            "name"            : shop.name,
+            "address"         : shop.address,
+            "province"        : shop.province,
+            "district"        : shop.district,
+            "phone"           : shop.phone,
+            "telegram_handle" : shop.telegram_handle,
+            "shop_pro_img_url": shop.shop_pro_img_url,
+            "status"          : shop.status,
+            "listing_count"   : listing_count,
+            "create_at"       : shop.create_at,
+        })
+ 
+    return result

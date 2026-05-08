@@ -57,28 +57,28 @@ def _listing_card(db: Session, listing: ShopListing) -> ShopListingCard:
     part_image = getattr(part, "img_url", None) or getattr(shop, "shop_pro_img_url", None)
     
     return ShopListingCard(
-        id=listing.id,
-        shop_id=listing.shop_id,
-        part_id=listing.part_id,
-        price=listing.price,
-        stock_quantity=listing.stock_quantity,
-        condition=listing.condition,
-        update_at=listing.update_at,
-        shop_name=owner_username,
-        shop_image=getattr(shop, "shop_pro_img_url", None),
-        part_image=part_image,
-        part_brand=getattr(part, "brand", None),
-        part_model=getattr(part, "model_name", None),
-        owner_id=owner_id,
-        owner_full_name=owner_full_name,
-        shop=ShopResponse.from_orm(shop) if shop else None,
-        part=PartResponse.from_orm(part) if part else None,
+        id              = listing.id,
+        shop_id         = listing.shop_id,
+        part_id         = listing.part_id,
+        price           = listing.price,
+        stock_quantity  = listing.stock_quantity,
+        condition       = listing.condition,
+        update_at       = listing.update_at,
+        shop_name       = owner_username,
+        shop_image      = getattr(shop, "shop_pro_img_url", None),
+        part_image      = part_image,
+        part_brand      = getattr(part, "brand", None),
+        part_model      = getattr(part, "model_name", None),
+        owner_id        = owner_id,
+        owner_full_name = owner_full_name,
+        shop            = ShopResponse.from_orm(shop) if shop else None,
+        part            = PartResponse.from_orm(part) if part else None,
     )
 
 
 def register_shop_listing_routes(app):
 
-    # ── CREATE LISTING (technical only — own shop) ─────────────────────────
+    # ── CREATE LISTING (technical only — own shop)
 
     @app.post("/listings/", response_model=ShopListingResponse, status_code=201, tags=["Shop Listings"])
     def create_listing(
@@ -237,11 +237,11 @@ def register_shop_listing_routes(app):
             create_hardware_spec(db, category, part.id, spec_data)
 
             listing = ShopListing(
-                shop_id=shop.id,
-                part_id=part.id,
-                price=price,
-                stock_quantity=stock_quantity,
-                condition=condition,
+                shop_id        = shop.id,
+                part_id        = part.id,
+                price          = price,
+                stock_quantity = stock_quantity,
+                condition      = condition,
             )
             db.add(listing)
 
@@ -258,15 +258,15 @@ def register_shop_listing_routes(app):
             raise
 
         return {
-            "listing": listing,
-            "part": part,
-            "category": category,
+            "listing"      : listing,
+            "part"         : part,
+            "category"     : category,
             "hardware_type": hardware_type,
-            "spec": spec_data,
+            "spec"         : spec_data,
         }
 
 
-    # ── GET ALL LISTINGS (public) — filter by shop or part ────────────────
+    # ── GET ALL LISTINGS (public) — filter by shop or part
 
     @app.get("/listings/", response_model=list[ShopListingCard], tags=["Shop Listings"])
     def get_all_listings(
@@ -288,7 +288,7 @@ def register_shop_listing_routes(app):
         return [_listing_card(db, l) for l in listings]
 
 
-    # ── GET ONE LISTING (public) ───────────────────────────────────────────
+    # ── GET ONE LISTING (public) 
 
     @app.get("/listings/{listing_id}", response_model=ShopListingResponse, tags=["Shop Listings"])
     def get_one_listing(
@@ -301,7 +301,7 @@ def register_shop_listing_routes(app):
         return listing
 
 
-    # ── GET MY SHOP LISTINGS (technical only) ─────────────────────────────
+    # ── GET MY SHOP LISTINGS (technical only)
 
     @app.get("/listings/my-listings/", response_model=list[ShopListingCard], tags=["Shop Listings"])
     def get_my_listings(
@@ -315,7 +315,7 @@ def register_shop_listing_routes(app):
         return [_listing_card(db, l) for l in listings]
 
 
-    # ── UPDATE LISTING (technical — own shop only) ─────────────────────────
+    # ── UPDATE LISTING (technical — own shop only)
 
     @app.patch("/listings/{listing_id}", response_model=ShopListingResponse, tags=["Shop Listings"])
     def update_listing(
@@ -342,7 +342,7 @@ def register_shop_listing_routes(app):
         return listing
 
 
-    # ── DELETE LISTING (technical own shop + admin) ────────────────────────
+    # ── DELETE LISTING (technical own shop + admin) 
 
     @app.delete("/listings/{listing_id}", status_code=204, tags=["Shop Listings"])
     def delete_listing(
@@ -369,8 +369,7 @@ def register_shop_listing_routes(app):
         db.commit()
 
 
-    # ── ADMIN: GET ALL LISTINGS (admin only) ─────────────────────────────
-
+    # ── ADMIN: GET ALL LISTINGS (admin only)
     @app.get("/admin/listings/", response_model=list[ShopListingCard], tags=["Admin"])
     def admin_get_all_listings(
         skip : int     = 0,
@@ -383,7 +382,7 @@ def register_shop_listing_routes(app):
         return [_listing_card(db, l) for l in listings]
 
 
-    # ── ADMIN: DELETE ANY LISTING (admin only) ───────────────────────────
+    # ── ADMIN: DELETE ANY LISTING (admin only)
 
     @app.delete("/admin/listings/{listing_id}", status_code=204, tags=["Admin"])
     def admin_delete_listing(
@@ -400,7 +399,7 @@ def register_shop_listing_routes(app):
         db.commit()
         return None
 
-    # ── ADMIN: LISTINGS SUMMARY (admin only) ────────────────────────────
+    # ── ADMIN: LISTINGS SUMMARY (admin only) 
 
     @app.get("/admin/listings/summary", tags=["Admin"])
     def admin_get_listings_summary(
@@ -423,8 +422,7 @@ def register_shop_listing_routes(app):
             }
         }
 
-    # ── UPDATE LISTING (technical own shop + admin) ────────────────────────
-
+    # ── UPDATE LISTING (technical own shop + admin) 
     @app.patch("/listings/{listing_id}", response_model=ShopListingResponse, tags=["Shop Listings"])
     def update_listing(
         listing_id  : UUID,
@@ -453,3 +451,25 @@ def register_shop_listing_routes(app):
         db.commit()
         db.refresh(listing)
         return listing
+    
+    # get recently added ==================
+    @app.get("/listings/recently-added/", response_model=list[ShopListingCard], tags=["Shop Listings"])
+    def get_recently_added(
+        limit      : int         = 10,
+        category_id: UUID | None = None,
+        db         : Session     = Depends(get_db),
+    ):
+        """Returns the most recently added listings sorted by newest first."""
+        query = db.query(ShopListing).join(Part, ShopListing.part_id == Part.id)
+ 
+        # optional filter by category
+        if category_id:
+            query = query.filter(Part.category_id == category_id)
+ 
+        listings = (
+            query
+            .order_by(ShopListing.update_at.desc())
+            .limit(limit)
+            .all()
+        )
+        return [_listing_card(db, l) for l in listings]

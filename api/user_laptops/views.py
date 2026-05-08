@@ -12,7 +12,7 @@ from api.laptop_models.models import LaptopModel
 
 def register_user_laptop_routes(app):
 
-    # ── ADD LAPTOP TO MY PROFILE ───────────────────────────────────────────
+    # ── ADD LAPTOP TO MY PROFILE 
 
     @app.post("/my-laptops/", response_model=UserLaptopResponse, status_code=201, tags=["My Laptops"])
     def add_my_laptop(
@@ -43,7 +43,7 @@ def register_user_laptop_routes(app):
         return laptop
 
 
-    # ── GET MY LAPTOPS ─────────────────────────────────────────────────────
+    # ── GET MY LAPTOPS 
 
     @app.get("/my-laptops/", response_model=list[UserLaptopResponse], tags=["My Laptops"])
     def get_my_laptops(
@@ -55,7 +55,7 @@ def register_user_laptop_routes(app):
         ).filter(UserLaptop.user_id == current_user.id).all()
 
 
-    # ── GET ONE OF MY LAPTOPS ──────────────────────────────────────────────
+    # ── GET ONE OF MY LAPTOPS 
 
     @app.get("/my-laptops/{laptop_id}", response_model=UserLaptopResponse, tags=["My Laptops"])
     def get_one_my_laptop(
@@ -72,7 +72,7 @@ def register_user_laptop_routes(app):
         return laptop
 
 
-    # ── UPDATE NICKNAME ────────────────────────────────────────────────────
+    # ── UPDATE NICKNAME 
 
     @app.patch("/my-laptops/{laptop_id}", response_model=UserLaptopResponse, tags=["My Laptops"])
     def update_my_laptop(
@@ -96,8 +96,7 @@ def register_user_laptop_routes(app):
         return laptop
 
 
-    # ── REMOVE LAPTOP FROM PROFILE ─────────────────────────────────────────
-
+    # ── REMOVE LAPTOP FROM PROFILE
     @app.delete("/my-laptops/{laptop_id}", status_code=204, tags=["My Laptops"])
     def delete_my_laptop(
         laptop_id   : UUID,
@@ -114,7 +113,7 @@ def register_user_laptop_routes(app):
         db.commit()
 
 
-    # ── CHECK COMPATIBILITY FOR MY LAPTOP ⭐ ──────────────────────────────
+    # ── CHECK COMPATIBILITY FOR MY LAPTOP ⭐
 
     @app.get("/my-laptops/{laptop_id}/check-part/", tags=["My Laptops"])
     def check_part_for_my_laptop(
