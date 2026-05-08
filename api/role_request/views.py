@@ -19,7 +19,7 @@ def submit_request(
     db     : Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-    if current_user.role.upper() in ("TECHNICAL", "ADMIN"):
+    if current_user.role in (UserRole.TECHNICAL, UserRole.ADMIN):
         raise HTTPException(400, "You are already a Technical or Admin user")
 
     existing = db.query(RoleRequest).filter(
@@ -63,7 +63,7 @@ def get_all_requests(
 ):
     query = db.query(RoleRequest)
     if status:
-        query = query.filter(RoleRequest.status == status.upper())
+        query = query.filter(RoleRequest.status == status.lower())
     return query.order_by(RoleRequest.create_at.desc()).offset(skip).limit(limit).all()
 
 @app.get("/requests/summary", tags=["Role Requests"])

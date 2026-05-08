@@ -71,7 +71,7 @@ def create_shop(
         google_maps_url  = google_maps_url,
         address          = address,
         shop_pro_img_url = shop_pro_img_url,
-        status           = ShopStatus.pending,
+        status           = ShopStatus.PENDING,
     )
     db.add(shop)
     db.commit()
@@ -157,10 +157,10 @@ def verify_shop(
     shop = db.query(Shop).filter(Shop.id == shop_id).first()
     if not shop:
         raise HTTPException(404, "Shop not found")
-    if shop.status == ShopStatus.active:
+    if shop.status == ShopStatus.ACTIVE:
         raise HTTPException(400, "Shop is already verified")
 
-    shop.status = ShopStatus.active
+    shop.status = ShopStatus.ACTIVE
 
     from api.users.models import User
 

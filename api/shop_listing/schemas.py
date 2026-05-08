@@ -15,7 +15,7 @@ class ShopListingCreate(BaseModel):
     part_id       : UUID
     price         : Decimal
     stock_quantity: int
-    condition     : PartCondition = PartCondition.new
+    condition     : PartCondition = PartCondition.NEW
 
 
 class ShopListingUpdate(BaseModel):

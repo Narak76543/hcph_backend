@@ -24,10 +24,10 @@ from api.shop_listing.schemas import (
 )
 from core.db import get_db
 from core.security import get_current_user, require_technical, require_admin
-from api.shops.models import Shop
+from api.shops.models import Shop, ShopStatus
 from api.shops.schemas import ShopResponse
 from api.part.schemas import PartResponse
-from api.users.models import User
+from api.users.models import User, UserRole
 
 
 def _listing_with_details(db: Session, listing: ShopListing):
@@ -90,7 +90,7 @@ def register_shop_listing_routes(app):
         shop = db.query(Shop).filter(Shop.owner_id == current_user.id).first()
         if not shop:
             raise HTTPException(404, "You don't have a shop yet")
-        if shop.status != "ACTIVE":
+        if shop.status != ShopStatus.ACTIVE:
             raise HTTPException(403, "Your shop is not verified yet")
 
         # validate part exists
@@ -166,7 +166,7 @@ def register_shop_listing_routes(app):
         shop = db.query(Shop).filter(Shop.owner_id == current_user.id).first()
         if not shop:
             raise HTTPException(404, "You don't have a shop yet")
-        if shop.status != "ACTIVE":
+        if shop.status != ShopStatus.ACTIVE:
             raise HTTPException(403, "Your shop is not verified yet")
 
         category_id = _get("category_id", "categoryId")
@@ -190,10 +190,10 @@ def register_shop_listing_routes(app):
         stock_quantity = int(_get("stock_quantity", "stockQuantity", "quantity") or 1)
         
         condition_raw = _get("condition")
-        condition = PartCondition.new
+        condition = PartCondition.NEW
         if condition_raw:
             try:
-                condition = PartCondition(str(condition_raw).upper())
+                condition = PartCondition(str(condition_raw).lower())
             except:
                 pass
 
@@ -283,7 +283,7 @@ def register_shop_listing_routes(app):
         if part_id:
             query = query.filter(ShopListing.part_id == part_id)
         if condition:
-            query = query.filter(ShopListing.condition == condition.upper())
+            query = query.filter(ShopListing.condition == condition.lower())
         listings = query.order_by(ShopListing.price.asc()).offset(skip).limit(limit).all()
         return [_listing_card(db, l) for l in listings]
 
@@ -355,7 +355,7 @@ def register_shop_listing_routes(app):
             raise HTTPException(404, "Listing not found")
 
         # admin can delete any, technical can only delete own
-        if current_user.role == "ADMIN":
+        if current_user.role == UserRole.ADMIN:
             db.delete(listing)
             db.commit()
             return
@@ -410,9 +410,9 @@ def register_shop_listing_routes(app):
         """Returns a summary of listings for the admin dashboard."""
         total_listings = db.query(ShopListing).count()
         # Count by condition
-        new_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.new).count()
-        used_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.used).count()
-        refurb_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.refurbished).count()
+        new_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.NEW).count()
+        used_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.USED).count()
+        refurb_count = db.query(ShopListing).filter(ShopListing.condition == PartCondition.REFURBISHED).count()
         
         return {
             "total_listings": total_listings,
@@ -437,7 +437,7 @@ def register_shop_listing_routes(app):
             raise HTTPException(404, "Listing not found")
 
         # admin can update any, technical can only update own
-        if current_user.role != "ADMIN":
+        if current_user.role != UserRole.ADMIN:
             shop = db.query(Shop).filter(Shop.owner_id == current_user.id).first()
             if not shop or listing.shop_id != shop.id:
                 raise HTTPException(403, "You can only update your own listings")

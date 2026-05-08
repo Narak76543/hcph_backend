@@ -16,10 +16,11 @@ from api.part.models import Part
 from api.part.schemas import PartCreate, PartResponse, PartUpdate
 from api.part_category.models import PartCategory
 from api.shop_listing.models import PartCondition, ShopListing
-from api.shops.models import Shop
+from api.shops.models import Shop, ShopStatus
 from core.app import app
 from core.db import get_db
 from core.security import require_admin, require_technical
+from api.users.models import UserRole
 
 
 def _pick_value(source: dict, *keys):
@@ -44,10 +45,10 @@ def _parse_category_inputs(source: dict):
 
 def _parse_condition(value: str | None) -> PartCondition:
     if value is None or value == "":
-        return PartCondition.new
+        return PartCondition.NEW
     normalized = str(value).strip().upper()
     try:
-        return PartCondition(normalized)
+        return PartCondition(normalized.lower())
     except ValueError as exc:
         raise HTTPException(422, f"Invalid condition: {value}") from exc
 
@@ -185,7 +186,7 @@ async def create_part(
             shop = db.query(Shop).filter(Shop.owner_id == current_user.id).first()
             if not shop:
                 raise HTTPException(404, "You don't have a shop yet")
-            if shop.status != "ACTIVE":
+            if shop.status != ShopStatus.ACTIVE:
                 raise HTTPException(403, "Your shop is not verified yet")
 
             listing = ShopListing(
@@ -284,7 +285,7 @@ def delete_part(
         raise HTTPException(404, "Part not found")
     
     # Admins can delete any part
-    if current_user.role == "ADMIN":
+    if current_user.role == UserRole.ADMIN:
         db.delete(part)
         db.commit()
         return None
