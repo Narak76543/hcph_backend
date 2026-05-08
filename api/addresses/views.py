@@ -9,7 +9,7 @@ from api.shops.models import Shop
 
 def register_shop_address_routes(app):
 
-    # ADD ADDRESS TO SHOP (technical — own shop only) 
+    # ==== ADD ADDRESS TO SHOP (technical — own shop only) ====
 
     @app.post("/shops/{shop_id}/addresses/", response_model=ShopAddressResponse, status_code=201, tags=["Shop Addresses"])
     def add_address(
@@ -24,11 +24,11 @@ def register_shop_address_routes(app):
         if shop.owner_id != current_user.id:
             raise HTTPException(403, "You can only add addresses to your own shop")
 
-        # if new address is_main → flip all others to False
+        # ==== if new address is_main → flip all others to False ====
         if payload.is_main:
             db.query(ShopAddress).filter(ShopAddress.shop_id == shop_id).update({"is_main": False})
 
-        # if this is first address → auto set as main
+        # ==== if this is first address → auto set as main ====
         count = db.query(ShopAddress).filter(ShopAddress.shop_id == shop_id).count()
         is_main = True if count == 0 else payload.is_main
 
@@ -47,7 +47,7 @@ def register_shop_address_routes(app):
         db.refresh(address)
         return address
 
-    # GET ALL ADDRESSES FOR A SHOP (public)
+    #==== GET ALL ADDRESSES FOR A SHOP (public) ====
 
     @app.get("/shops/{shop_id}/addresses/", response_model=list[ShopAddressResponse], tags=["Shop Addresses"])
     def get_shop_addresses(
@@ -65,7 +65,7 @@ def register_shop_address_routes(app):
         )
 
 
-    # ── GET ONE ADDRESS (public) ───────────────────────────────────────────
+    # ==== GET ONE ADDRESS (public) ====
 
     @app.get("/shops/{shop_id}/addresses/{address_id}", response_model=ShopAddressResponse, tags=["Shop Addresses"])
     def get_one_address(
@@ -82,7 +82,7 @@ def register_shop_address_routes(app):
         return address
 
 
-    # ── UPDATE ADDRESS (technical — own shop only) ─────────────────────────
+    # ==== UPDATE ADDRESS (technical — own shop only) ====
 
     @app.patch("/shops/{shop_id}/addresses/{address_id}", response_model=ShopAddressResponse, tags=["Shop Addresses"])
     def update_address(
@@ -105,7 +105,7 @@ def register_shop_address_routes(app):
         if not address:
             raise HTTPException(404, "Address not found")
 
-        # if setting this as main → flip all others to False first
+        # ==== if setting this as main → flip all others to False first ====
         if payload.is_main:
             db.query(ShopAddress).filter(
                 ShopAddress.shop_id == shop_id,
@@ -124,7 +124,7 @@ def register_shop_address_routes(app):
         db.refresh(address)
         return address
 
-    # ── SET AS MAIN ADDRESS 
+    # ==== SET AS MAIN ADDRESS ==== 
 
     @app.patch("/shops/{shop_id}/addresses/{address_id}/set-main", response_model=ShopAddressResponse, tags=["Shop Addresses"])
     def set_main_address(
@@ -139,10 +139,10 @@ def register_shop_address_routes(app):
         if shop.owner_id != current_user.id:
             raise HTTPException(403, "You can only update your own shop addresses")
 
-        # flip all to False
+        # ==== flip all to False ====
         db.query(ShopAddress).filter(ShopAddress.shop_id == shop_id).update({"is_main": False})
 
-        # set this one as main
+        # ==== set this one as main ====
         address = db.query(ShopAddress).filter(
             ShopAddress.id      == address_id,
             ShopAddress.shop_id == shop_id,
@@ -156,7 +156,7 @@ def register_shop_address_routes(app):
         return address
 
 
-    # ── DELETE ADDRESS (technical — own shop only) ─────────────────────────
+    # ==== DELETE ADDRESS (technical — own shop only) =====
 
     @app.delete("/shops/{shop_id}/addresses/{address_id}", status_code=204, tags=["Shop Addresses"])
     def delete_address(
@@ -178,7 +178,7 @@ def register_shop_address_routes(app):
         if not address:
             raise HTTPException(404, "Address not found")
 
-        # prevent deleting main address if others exist
+        # ===== prevent deleting main address if others exist ======
         if address.is_main:
             count = db.query(ShopAddress).filter(ShopAddress.shop_id == shop_id).count()
             if count > 1:

@@ -1,4 +1,3 @@
-# TELEGRAM LOGIN - api/auth/telegram_views.py
 from fastapi import Depends, HTTPException, Body, Request
 from fastapi.responses import RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session
@@ -11,7 +10,7 @@ from utils.telegram_verify import verify_telegram_hash
 import re
 import os
 
-# Bot token should be set as an environment variable
+# ===== Bot token should be set as an environment variable =====
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 @app.post("/auth/telegram", response_model=TokenResponse, tags=["Auth"])
@@ -19,51 +18,57 @@ def telegram_login(data: dict = Body(...), db: Session = Depends(get_db)):
     """
     Authenticate a user using data from Telegram Login Widget.
     """
-    print(f"DEBUG: Received telegram_login request with data: {data}")
-    # 1. Verify Telegram Hash
+    print(f"=========== DEBUG: Received telegram_login request with data: {data} ========================")
+
+    # ===== 1. Verify Telegram Hash ======
     if not TELEGRAM_BOT_TOKEN:
         raise HTTPException(500, "Telegram Bot Token is not configured on the server")
         
     if not verify_telegram_hash(data.copy(), TELEGRAM_BOT_TOKEN):
         raise HTTPException(401, "Invalid Telegram authentication data")
     
-    telegram_id = int(data['id'])
-    first_name = data.get('first_name', '')
-    last_name = data.get('last_name', '')
+    telegram_id       = int(data['id'])
+    first_name        = data.get('first_name', '')
+    last_name         = data.get('last_name', '')
     telegram_username = data.get('username')
-    photo_url = data.get('photo_url')
+    photo_url         = data.get('photo_url')
 
-    # 2. Upsert User (Find by Telegram ID)
+    # ===== 2. Upsert User (Find by Telegram ID) =====
     user = db.query(User).filter(User.telegram_id == telegram_id).first()
 
     if user:
-        # Update existing user info
-        user.firstname = first_name
-        user.lastname = last_name
+        # ===== Update existing user info =====
+        user.firstname         = first_name
+        user.lastname          = last_name
         user.telegram_username = telegram_username
         user.profile_image_url = photo_url
-        user.auth_provider = AuthProvider.TELEGRAM
+        user.auth_provider     = AuthProvider.TELEGRAM
     else:
+        # ==============================================
         # Create new user
-        # Auto-generate unique username if not provided
+        # Auto-generate unique username if not provided=
+        # ==============================================
+
         if telegram_username:
             username = telegram_username
-            # Double check uniqueness in our DB
+
+            # ===== Double check uniqueness in our DB =====
             if db.query(User).filter(User.username == username).first():
                 username = f"{username}_{str(telegram_id)[-4:]}"
         else:
-            # Generate from first name, stripping special chars
+            # ===== Generate from first name, stripping special chars =======
             base = re.sub(r'[^a-z0-9]', '', first_name.lower())
             if not base:
                 base = "user"
             username = base
             counter = 1
-            # Ensure uniqueness
+            # ====== Ensure uniqueness =======
+
             while db.query(User).filter(User.username == username).first():
                 username = f"{base}{counter}"
                 counter += 1
         
-        # Provide placeholders for required database fields
+        # ========= Provide placeholders for required database fields ===============
         placeholder_email = f"tg_{telegram_id}@telegram.com"
         placeholder_phone = f"TG_{telegram_id}"
         placeholder_pwd   = hash_password(f"TELEGRAM_AUTH_{telegram_id}") # Dummy hash
@@ -89,7 +94,7 @@ def telegram_login(data: dict = Body(...), db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
     
-    # 3. Generate Access Token
+    # ======================== 3. Generate Access Token ==========================
     token = create_access_token({"sub": str(user.id), "role": user.role})
     
     return {
@@ -108,13 +113,13 @@ async def telegram_callback(request: Request):
     print("DEBUG: telegram_callback [VERSION 3] called")
     params = dict(request.query_params)
     
-    # Option A: Telegram sent query parameters (id, hash, etc.)
+    # =================== Option A: Telegram sent query parameters (id, hash, etc.) =========================
     if params:
         print(f"DEBUG: Redirecting via query params: {params.keys()}")
         query_string = "&".join([f"{k}={v}" for k, v in params.items()])
         return RedirectResponse(url=f"myapp://telegram-auth?{query_string}")
 
-    # Option B: Telegram sent a fragment (#tgAuthResult=...)
+    # ============================== Option B: Telegram sent a fragment (#tgAuthResult=...) =======================
     print("DEBUG: No query params found, returning JS fragment handler")
     return """
     <html>

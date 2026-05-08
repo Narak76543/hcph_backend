@@ -20,7 +20,7 @@ class ShopAddress(Base):
 
     shop = relationship("Shop", backref="addresses")
 
-# ── Auto enforce only one is_main per shop 
+# ==== Auto enforce only one is_main per shop ==== 
 @event.listens_for(ShopAddress, "before_insert")
 @event.listens_for(ShopAddress, "before_update")
 def enforce_single_main(mapper, connection, target):
