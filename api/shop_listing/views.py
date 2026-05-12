@@ -47,10 +47,12 @@ def _listing_card(db: Session, listing: ShopListing) -> ShopListingCard:
     # Get owner info (username shown as "Posted by", full name for display)
     owner_username = None
     owner_full_name = None
+    owner_profile_image_url = None
     owner_id = None
     if shop and shop.owner:
         owner_username = getattr(shop.owner, "username", None)
         owner_full_name = f"{getattr(shop.owner, 'firstname', '')} {getattr(shop.owner, 'lastname', '')}".strip()
+        owner_profile_image_url = getattr(shop.owner, "profile_image_url", None)
         owner_id = shop.owner_id
     
     # Fallback to shop image if part has no image
@@ -71,6 +73,7 @@ def _listing_card(db: Session, listing: ShopListing) -> ShopListingCard:
         part_model      = getattr(part, "model_name", None),
         owner_id        = owner_id,
         owner_full_name = owner_full_name,
+        owner_profile_image_url = owner_profile_image_url,
         shop            = ShopResponse.from_orm(shop) if shop else None,
         part            = PartResponse.from_orm(part) if part else None,
     )

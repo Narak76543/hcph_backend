@@ -72,6 +72,7 @@ class ShopListingCard(BaseModel):
     # owner info for delete/edit permissions
     owner_id      : Optional[UUID] = None
     owner_full_name: Optional[str] = None
+    owner_profile_image_url: Optional[str] = None
     # nested objects for legacy client parsing
     shop          : Optional[ShopResponse] = None
     part          : Optional[PartResponse] = None
