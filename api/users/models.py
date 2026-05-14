@@ -1,6 +1,6 @@
 import uuid
 import enum
-from sqlalchemy import Column, String, Boolean, Enum, DateTime, Text, BigInteger
+from sqlalchemy import Column, String, Boolean, Enum, DateTime, Text, BigInteger, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
 from core.db import Base
@@ -33,7 +33,7 @@ class User(Base):
     password_hash     = Column(String(255), nullable=False)
 
     # auth Provider
-    auth_provider     = Column(Enum(AuthProvider, values_callable=lambda x: [e.value for e in x]), default=AuthProvider.LOCAL, nullable=False)
+    auth_provider     = Column(Enum(AuthProvider), default=AuthProvider.LOCAL, nullable=False)
 
     # google field
     google_id         = Column(String(100), unique=True, nullable=True)
@@ -41,8 +41,21 @@ class User(Base):
     telegram_id       = Column(BigInteger,  unique=True, nullable=True)
     telegram_username = Column(String(100), nullable=True)
 
-    role              = Column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), default=UserRole.USER, nullable=False)
+    role              = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     is_verified       = Column(Boolean,  default=False)
     created_at        = Column(DateTime(timezone=True), server_default=func.now())
     updated_at        = Column(DateTime(timezone=True), server_default=func.now())
     profile_image_url = Column(Text, nullable=True)
+
+
+class UserFollow(Base):
+    __tablename__ = "TBL_USER_FOLLOWS"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    follower_id = Column(UUID(as_uuid=True), ForeignKey("TBL_USERS.id"), nullable=False)
+    following_id = Column(UUID(as_uuid=True), ForeignKey("TBL_USERS.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("follower_id", "following_id", name="uq_user_follow_pair"),
+    )

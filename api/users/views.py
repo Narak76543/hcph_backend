@@ -2,26 +2,79 @@ import shutil
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 from uuid import UUID, uuid4
-from fastapi import Depends, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import EmailStr
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 from core.security import (
     hash_password, verify_password,
-    create_access_token, get_current_user, require_admin
+    create_access_token, decode_token, get_current_user, require_admin
 )
 from core.app import app
 from core.db import get_db
-from api.users.models import User
+from api.users.models import User, UserFollow, UserRole
 from api.users.schemas import (
-    UserResponse, TokenResponse
+    UserResponse, TokenResponse, FollowStatusResponse
 )
 from pydantic import BaseModel
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 PROFILE_IMAGE_DIR = PROJECT_ROOT / "media" / "profile_images"
 PROFILE_IMAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _optional_user(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    if not authorization:
+        return None
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    try:
+        payload = decode_token(token)
+    except HTTPException:
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    return db.query(User).filter(User.id == user_id).first()
+
+
+def _follow_status(
+    db: Session,
+    target_user: User,
+    current_user: User | None = None,
+) -> FollowStatusResponse:
+    follower_count = (
+        db.query(UserFollow)
+        .filter(UserFollow.following_id == target_user.id)
+        .count()
+    )
+    following_count = (
+        db.query(UserFollow)
+        .filter(UserFollow.follower_id == target_user.id)
+        .count()
+    )
+    is_following = False
+    if current_user:
+        is_following = (
+            db.query(UserFollow)
+            .filter(
+                UserFollow.follower_id == current_user.id,
+                UserFollow.following_id == target_user.id,
+            )
+            .first()
+            is not None
+        )
+    return FollowStatusResponse(
+        user_id=target_user.id,
+        follower_count=follower_count,
+        following_count=following_count,
+        is_following=is_following,
+    )
 
 
 def _save_profile_image(file: UploadFile | None, request: Request) -> str | None:
@@ -141,6 +194,48 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 def get_me(current_user=Depends(get_current_user)):
     return current_user
 
+
+@app.get("/users/{user_id}/follow-status", response_model=FollowStatusResponse, tags=["Users"])
+def get_follow_status(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(_optional_user),
+):
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(404, "User not found")
+    return _follow_status(db, target_user, current_user)
+
+
+@app.post("/users/{user_id}/follow", response_model=FollowStatusResponse, tags=["Users"])
+def toggle_follow_user(
+    user_id: UUID,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(404, "User not found")
+    if target_user.id == current_user.id:
+        raise HTTPException(400, "You cannot follow yourself")
+    if target_user.role != UserRole.TECHNICAL:
+        raise HTTPException(400, "Only technical users can be followed")
+
+    existing = (
+        db.query(UserFollow)
+        .filter(
+            UserFollow.follower_id == current_user.id,
+            UserFollow.following_id == target_user.id,
+        )
+        .first()
+    )
+    if existing:
+        db.delete(existing)
+    else:
+        db.add(UserFollow(follower_id=current_user.id, following_id=target_user.id))
+    db.commit()
+    return _follow_status(db, target_user, current_user)
+
 # - for User update profile
 @app.patch("/users/me", response_model=UserResponse, tags=["Users"])
 def update_me(
@@ -244,6 +339,11 @@ def delete(
     # 3. User Laptops
     from api.user_laptops.models import UserLaptop
     db.query(UserLaptop).filter(UserLaptop.user_id == user_id).delete(synchronize_session=False)
+
+    # 3b. Follows
+    db.query(UserFollow).filter(
+        or_(UserFollow.follower_id == user_id, UserFollow.following_id == user_id)
+    ).delete(synchronize_session=False)
 
     # 4. Audit/Creator fields in other tables (Set to NULL instead of delete)
     from api.laptop_models.models import LaptopModel

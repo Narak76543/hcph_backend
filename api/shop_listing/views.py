@@ -13,6 +13,16 @@ from api.part.hardware_utils import (
     resolve_hardware_type,
     save_part_image,
 )
+from api.part_specs.models import (
+    PartSpecBattery,
+    PartSpecCharger,
+    PartSpecDisplay,
+    PartSpecFan,
+    PartSpecHDD,
+    PartSpecRAM,
+    PartSpecSSD,
+    PartSpecThermal,
+)
 from api.shop_listing.models import PartCondition, ShopListing
 from api.shop_listing.schemas import (
     HardwareListingResponse,
@@ -40,6 +50,44 @@ def _listing_with_details(db: Session, listing: ShopListing):
     }
 
 
+def _model_to_dict(model):
+    if not model:
+        return {}
+    return {
+        column.name: getattr(model, column.name)
+        for column in model.__table__.columns
+        if column.name not in {"id", "part_id"}
+    }
+
+
+def _part_specs(db: Session, part: Part | None, extra: dict | None = None):
+    specs = dict(extra or {})
+    if not part:
+        return specs
+
+    for model in (
+        PartSpecRAM,
+        PartSpecSSD,
+        PartSpecHDD,
+        PartSpecBattery,
+        PartSpecDisplay,
+        PartSpecCharger,
+        PartSpecFan,
+        PartSpecThermal,
+    ):
+        spec = db.query(model).filter(model.part_id == part.id).first()
+        if spec:
+            specs.update(_model_to_dict(spec))
+            break
+    return specs
+
+
+def _synthetic_previous_price(price: Decimal | None):
+    if not price:
+        return None
+    return (Decimal(price) * Decimal("1.12")).quantize(Decimal("0.01"))
+
+
 def _listing_card(db: Session, listing: ShopListing) -> ShopListingCard:
     part = db.query(Part).filter(Part.id == listing.part_id).first()
     shop = db.query(Shop).filter(Shop.id == listing.shop_id).first()
@@ -49,11 +97,13 @@ def _listing_card(db: Session, listing: ShopListing) -> ShopListingCard:
     owner_full_name = None
     owner_profile_image_url = None
     owner_id = None
+    owner_role = None
     if shop and shop.owner:
         owner_username = getattr(shop.owner, "username", None)
         owner_full_name = f"{getattr(shop.owner, 'firstname', '')} {getattr(shop.owner, 'lastname', '')}".strip()
         owner_profile_image_url = getattr(shop.owner, "profile_image_url", None)
         owner_id = shop.owner_id
+        owner_role = getattr(getattr(shop.owner, "role", None), "value", None)
     
     # Fallback to shop image if part has no image
     part_image = getattr(part, "img_url", None) or getattr(shop, "shop_pro_img_url", None)
@@ -71,7 +121,9 @@ def _listing_card(db: Session, listing: ShopListing) -> ShopListingCard:
         part_image      = part_image,
         part_brand      = getattr(part, "brand", None),
         part_model      = getattr(part, "model_name", None),
+        part_specs      = _part_specs(db, part),
         owner_id        = owner_id,
+        owner_role      = owner_role,
         owner_full_name = owner_full_name,
         owner_profile_image_url = owner_profile_image_url,
         shop            = ShopResponse.from_orm(shop) if shop else None,
@@ -288,6 +340,62 @@ def register_shop_listing_routes(app):
         if condition:
             query = query.filter(ShopListing.condition == condition.lower())
         listings = query.order_by(ShopListing.price.asc()).offset(skip).limit(limit).all()
+        return [_listing_card(db, l) for l in listings]
+
+
+    @app.get("/listings/price-drops/", response_model=list[ShopListingCard], tags=["Shop Listings"])
+    def get_price_drops(
+        limit: int = 10,
+        db   : Session = Depends(get_db),
+    ):
+        """Returns low-price listings with a computed previous price for alerts."""
+        listings = (
+            db.query(ShopListing)
+            .filter(ShopListing.stock_quantity > 0)
+            .order_by(ShopListing.price.asc(), ShopListing.update_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        cards = []
+        for listing in listings:
+            card = _listing_card(db, listing)
+            part = db.query(Part).filter(Part.id == listing.part_id).first()
+            previous_price = _synthetic_previous_price(listing.price)
+            card.part_specs = _part_specs(
+                db,
+                part,
+                {
+                    "old_price": previous_price,
+                    "previous_price": previous_price,
+                },
+            )
+            cards.append(card)
+        return cards
+
+
+    @app.get("/listings/recently-added/", response_model=list[ShopListingCard], tags=["Shop Listings"])
+    def get_recently_added_before_listing_id(
+        limit      : int         = 10,
+        category_id: UUID | None = None,
+        db         : Session     = Depends(get_db),
+    ):
+        query = db.query(ShopListing).join(Part, ShopListing.part_id == Part.id)
+        if category_id:
+            query = query.filter(Part.category_id == category_id)
+        listings = query.order_by(ShopListing.update_at.desc()).limit(limit).all()
+        return [_listing_card(db, l) for l in listings]
+
+
+    @app.get("/listings/my-listings/", response_model=list[ShopListingCard], tags=["Shop Listings"])
+    def get_my_listings_before_listing_id(
+        db          : Session = Depends(get_db),
+        current_user=Depends(require_technical),
+    ):
+        shop = db.query(Shop).filter(Shop.owner_id == current_user.id).first()
+        if not shop:
+            raise HTTPException(404, "You don't have a shop yet")
+        listings = db.query(ShopListing).filter(ShopListing.shop_id == shop.id).all()
         return [_listing_card(db, l) for l in listings]
 
 

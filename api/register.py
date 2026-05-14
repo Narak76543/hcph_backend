@@ -9,6 +9,7 @@ def register_routes() -> None:
     import api.part_category.views  # noqa: F401
     import api.part.views  # noqa: F401
     import api.auth.telegram_views  # noqa: F401
+    import api.alerts.views  # noqa: F401
     
     # shop listing module register
     from api.shop_listing.views import register_shop_listing_routes
@@ -25,6 +26,9 @@ def register_routes() -> None:
     register_laptop_model_routes(app)
     register_laptop_spec_routes(app)
     register_user_laptop_routes(app)
+
+    from api.alerts.views import register_alert_routes
+    register_alert_routes(app)
 
     # address module register
     from api.addresses.views import register_shop_address_routes

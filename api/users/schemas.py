@@ -55,4 +55,11 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type:   str = "bearer"
     user:         UserResponse
+
+
+class FollowStatusResponse(BaseModel):
+    user_id: UUID
+    follower_count: int = 0
+    following_count: int = 0
+    is_following: bool = False
  

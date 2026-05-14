@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Any, Optional
 from uuid import UUID
 from datetime import datetime
@@ -69,8 +69,10 @@ class ShopListingCard(BaseModel):
     part_image    : Optional[str] = None
     part_brand    : Optional[str] = None
     part_model    : Optional[str] = None
+    part_specs    : dict[str, Any] = Field(default_factory=dict)
     # owner info for delete/edit permissions
     owner_id      : Optional[UUID] = None
+    owner_role    : Optional[str] = None
     owner_full_name: Optional[str] = None
     owner_profile_image_url: Optional[str] = None
     # nested objects for legacy client parsing
